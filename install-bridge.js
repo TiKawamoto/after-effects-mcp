@@ -1,123 +1,122 @@
-// install-bridge.js
-// Script to install the After Effects MCP Bridge to the ScriptUI Panels folder
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-// ES Modules replacement for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Detect platform
-const isMac = process.platform === 'darwin';
-const isWindows = process.platform === 'win32';
-
-// Possible After Effects installation paths (common locations)
-const possiblePaths = isMac
-  ? [
-      '/Applications/Adobe After Effects 2026',
-      '/Applications/Adobe After Effects 2025',
-      '/Applications/Adobe After Effects 2024',
-      '/Applications/Adobe After Effects 2023',
-      '/Applications/Adobe After Effects 2022',
-      '/Applications/Adobe After Effects 2021'
-    ]
-  : [
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2026',
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2025',
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2024',
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2023',
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2022',
-      'C:\\Program Files\\Adobe\\Adobe After Effects 2021'
-    ];
-
-// Find valid After Effects installation
-let afterEffectsPath = null;
-for (const testPath of possiblePaths) {
-  if (fs.existsSync(testPath)) {
-    afterEffectsPath = testPath;
-    break;
-  }
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+const repo = path.dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const flags = new Set(["--portable", "--list", "--uninstall"]);
+const values = new Set(["--ae-path", "--panel-dir", "--bridge-dir"]);
+const options = {};
+for (let i = 0; i < args.length; i++) {
+  if (flags.has(args[i])) options[args[i]] = true;
+  else if (values.has(args[i]) && args[i + 1] && !args[i + 1].startsWith("--"))
+    options[args[i]] = args[++i];
+  else throw new Error("Unknown or incomplete option: " + args[i]);
 }
-
-if (!afterEffectsPath) {
-  console.error('Error: Could not find After Effects installation.');
-  console.error('Please manually copy the bridge script to your After Effects ScriptUI Panels folder.');
-  console.error('Source: build/scripts/mcp-bridge-auto.jsx');
-  if (isMac) {
-    console.error('Target: /Applications/Adobe After Effects [VERSION]/Scripts/ScriptUI Panels/');
-  } else {
-    console.error('Target: C:\\Program Files\\Adobe\\Adobe After Effects [VERSION]\\Support Files\\Scripts\\ScriptUI Panels\\');
-  }
-  process.exit(1);
+const adobe =
+  process.platform === "win32"
+    ? path.join(process.env.ProgramFiles || "C:/Program Files", "Adobe")
+    : "/Applications";
+const installs = fs.existsSync(adobe)
+  ? fs
+      .readdirSync(adobe)
+      .filter((n) => /^Adobe After Effects/.test(n))
+      .map((n) => path.join(adobe, n))
+      .filter((p) =>
+        fs.existsSync(
+          process.platform === "win32"
+            ? path.join(p, "Support Files", "AfterFX.exe")
+            : path.join(p, "Scripts")
+        )
+      )
+  : [];
+if (options["--list"]) {
+  console.log(JSON.stringify(installs, null, 2));
+  process.exit(0);
 }
-
-// Define source and destination paths
-const sourceScript = path.join(__dirname, 'build', 'scripts', 'mcp-bridge-auto.jsx');
-const destinationFolder = isMac
-  ? path.join(afterEffectsPath, 'Scripts', 'ScriptUI Panels')
-  : path.join(afterEffectsPath, 'Support Files', 'Scripts', 'ScriptUI Panels');
-const destinationScript = path.join(destinationFolder, 'mcp-bridge-auto.jsx');
-
-// Ensure source script exists
-if (!fs.existsSync(sourceScript)) {
-  console.error(`Error: Source script not found at ${sourceScript}`);
-  console.error('Please run "npm run build" first to generate the script.');
-  process.exit(1);
+if (
+  [options["--portable"], options["--ae-path"], options["--panel-dir"]].filter(
+    Boolean
+  ).length > 1
+)
+  throw new Error("Choose one of --portable, --ae-path or --panel-dir.");
+let destination = options["--panel-dir"];
+if (options["--ae-path"]) {
+  const ae = path.resolve(options["--ae-path"]);
+  if (
+    process.platform === "win32" &&
+    !fs.existsSync(path.join(ae, "Support Files", "AfterFX.exe"))
+  )
+    throw new Error("No AfterFX.exe at custom AE installation.");
+  destination = path.join(
+    ae,
+    ...(process.platform === "win32"
+      ? ["Support Files", "Scripts", "ScriptUI Panels"]
+      : ["Scripts", "ScriptUI Panels"])
+  );
 }
-
-// Create destination folder if it doesn't exist
-if (!fs.existsSync(destinationFolder)) {
-  try {
-    fs.mkdirSync(destinationFolder, { recursive: true });
-  } catch (error) {
-    console.error(`Error creating destination folder: ${error.message}`);
-    console.error('You may need administrative privileges to install the script.');
-    process.exit(1);
-  }
+// MSIX-packaged clients can virtualize LocalAppData into private package
+// storage that AE cannot see. Keep the shared default outside AppData.
+const localBase = path.join(os.homedir(), ".after-effects-mcp");
+destination = path.resolve(
+  destination || path.join(localBase, "panel")
+);
+const panel = path.join(destination, "mcp-bridge-auto.jsx"),
+  config = path.join(destination, "mcp-bridge.config.json");
+const source = path.join(repo, "build", "scripts", "mcp-bridge-auto.jsx");
+if (options["--uninstall"]) {
+  // Deliberately remove only our panel; preserve settings and all bridge journals.
+  if (fs.existsSync(panel)) fs.unlinkSync(panel);
+  console.log(
+    "Panel removed. Settings preserved at " +
+      config +
+      ". Remove the Codex MCP table separately."
+  );
+  process.exit(0);
 }
-
-// Copy the script
+const existing = fs.existsSync(config)
+  ? JSON.parse(fs.readFileSync(config, "utf8"))
+  : null;
+const bridgeDirectory = path.resolve(
+  options["--bridge-dir"] ||
+    existing?.bridgeDirectory ||
+    path.join(localBase, "bridge")
+);
+if (!fs.existsSync(source))
+  throw new Error("Build first: npm ci --ignore-scripts && npm run build");
+fs.mkdirSync(bridgeDirectory, { recursive: true, mode: 0o700 });
+const probe = path.join(bridgeDirectory, ".installer-write-test");
+fs.writeFileSync(probe, "test", { flag: "wx", mode: 0o600 });
+fs.unlinkSync(probe);
 try {
-  console.log(`Installing bridge script to ${destinationScript}...`);
-
-  if (isMac) {
-    // On Mac, try direct copy first, then sudo if needed
-    try {
-      fs.copyFileSync(sourceScript, destinationScript);
-    } catch {
-      // If direct copy fails, try with sudo
-      execSync(`sudo cp "${sourceScript}" "${destinationScript}"`, { stdio: 'inherit' });
-    }
-  } else {
-    // Try to use PowerShell with elevated privileges on Windows
-    const command = `
-      Start-Process PowerShell -Verb RunAs -ArgumentList "-Command Copy-Item -Path '${sourceScript.replace(/\\/g, '\\\\')}' -Destination '${destinationScript.replace(/\\/g, '\\\\')}' -Force"
-    `;
-    execSync(`powershell -Command "${command}"`, { stdio: 'inherit' });
-  }
-
-  console.log('Bridge script installed successfully!');
-  console.log('\nImportant next steps:');
-  console.log('1. Open After Effects');
-  if (isMac) {
-    console.log('2. Go to After Effects > Settings > Scripting & Expressions');
-  } else {
-    console.log('2. Go to Edit > Preferences > Scripting & Expressions');
-  }
-  console.log('3. Enable "Allow Scripts to Write Files and Access Network"');
-  console.log('4. Restart After Effects');
-  console.log('5. Open the bridge panel: Window > mcp-bridge-auto.jsx');
-} catch (error) {
-  console.error(`Error installing script: ${error.message}`);
-  console.error('\nPlease try manual installation:');
-  console.error(`1. Copy: ${sourceScript}`);
-  console.error(`2. To: ${destinationScript}`);
-  if (isMac) {
-    console.error('3. You may need to run with sudo or copy manually via Finder');
-  } else {
-    console.error('3. You may need to run as administrator or use File Explorer with admin rights');
-  }
-  process.exit(1);
-} 
+  fs.mkdirSync(destination, { recursive: true });
+  fs.copyFileSync(source, panel);
+  const hash = (f) =>
+    createHash("sha256").update(fs.readFileSync(f)).digest("hex");
+  if (hash(source) !== hash(panel))
+    throw new Error("Installed panel checksum mismatch");
+  const settings = { ...existing, bridgeDirectory };
+  if (!existing || options["--bridge-dir"])
+    fs.writeFileSync(config, JSON.stringify(settings, null, 2), "utf8");
+  if (
+    JSON.parse(fs.readFileSync(config, "utf8")).bridgeDirectory !==
+    bridgeDirectory
+  )
+    throw new Error("Panel configuration verification failed");
+  console.log(
+    JSON.stringify(
+      { panel, config, bridgeDirectory, sha256: hash(panel) },
+      null,
+      2
+    )
+  );
+  console.log(
+    "Verified. Portable: AE > File > Scripts > Run Script File. Docked install: restart AE, then Window > mcp-bridge-auto.jsx. Updates: Stop and reopen panel. Enable script file access if needed."
+  );
+} catch (e) {
+  console.error(
+    `Install failed: ${e.message}\nNo elevation was attempted. Use --portable, or manually copy ${source} and mcp-bridge.config.json into ${destination}.`
+  );
+  process.exitCode = 1;
+}

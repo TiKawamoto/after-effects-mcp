@@ -1,0 +1,44 @@
+{
+  "date": "2026-09-09",
+  "aeVersion": "26.3x87",
+  "serverVersion": "2.0.0",
+  "protocolVersion": 1,
+  "client": "Codex CLI exec --ephemeral (configured STDIO MCP)",
+  "calls": 37,
+  "dispatched": 33,
+  "clientApprovalRejections": 2,
+  "retainedResultLookups": 2,
+  "tools": {
+    "get-project-info": 1,
+    "bridge-status": 2,
+    "get-composition-info": 9,
+    "create-composition": 1,
+    "create-solid-layer": 1,
+    "create-text-layer": 1,
+    "set-layer-properties": 3,
+    "create-shape-layer": 1,
+    "setLayerKeyframe": 4,
+    "setLayerExpression": 1,
+    "apply-effect": 1,
+    "get-layer-info": 5,
+    "duplicate-layer": 1,
+    "delete-layer": 1,
+    "execute-batch": 1
+  },
+  "finalComposition": {
+    "compositionId": 32,
+    "width": 1920,
+    "height": 1080,
+    "duration": 5,
+    "frameRate": 30,
+    "layerCount": 3
+  },
+  "deletionRequestId": "01a0b4fa-71d8-4c04-b8a3-62955dfa60a0",
+  "batchRequestId": "f507831f-225a-475e-bb5f-4aedea95a6e3",
+  "finalReconnect": {
+    "additionalCodexReadOnlyCalls": 2,
+    "connected": true,
+    "newProjectSession": true,
+    "compositionIds": [32, 1, 19]
+  }
+}

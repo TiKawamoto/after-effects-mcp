@@ -1,24 +1,28 @@
 {
   "name": "after-effects-mcp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "MCP server for Adobe After Effects",
   "main": "build/index.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=build/index.js --packages=external && copyfiles -u 1 \"src/scripts/**/*\" build",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && npm run typecheck && node --test tests/*.test.mjs",
     "start": "node build/index.js",
     "install-bridge": "node install-bridge.js",
-    "postinstall": "npm run build"
+    "bridge-reset": "node scripts/reset-bridge.mjs",
+    "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0",
-    "node-fetch": "^3.3.2",
-    "zod": "^3.22.2"
+    "@modelcontextprotocol/sdk": "^1.28.0"
   },
   "devDependencies": {
     "@types/node": "^20.17.30",
-    "copyfiles": "^2.4.1",
-    "esbuild": "^0.27.4",
+    "acorn": "^8.15.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
