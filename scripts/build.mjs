@@ -15,7 +15,7 @@ for (const file of fs.readdirSync(output)) {
     fs.unlinkSync(path.join(output, file));
 }
 await build({
-  entryPoints: ["src/index.ts", "src/bridge-client.ts"],
+  entryPoints: ["src/index.ts", "src/bridge-client.ts", "src/preview.ts"],
   bundle: true,
   platform: "node",
   format: "esm",
@@ -25,6 +25,7 @@ await build({
 const parts = [
   "src/bridge/json.jsx",
   "src/shared/validate.js",
+  "src/bridge/editing.jsx",
   "src/bridge/operations.jsx",
   "src/bridge/panel.jsx"
 ].map((f) => fs.readFileSync(f, "utf8").replace(/^export /gm, ""));

@@ -1,8 +1,8 @@
 # After Effects MCP — dependable personal bridge
 
-A local Node/STDIO MCP server and an ES3 ExtendScript panel. The panel executes structured operations sequentially inside After Effects. This 2.0 milestone replaces the upstream shared-command-file protocol; install the matching panel when updating.
+A local Node/STDIO MCP server and an ES3 ExtendScript panel. The panel executes structured operations sequentially inside After Effects. Version 2.1 adds property/effect editing, text typography, animation controls, layer organization and PNG frame previews to the correlated file bridge. Install the matching panel when updating.
 
-**Validation status:** Windows with AE 26.3x87 passed 22 automated tests, live AE acceptance and the Codex-driven workflow, including native visual inspection, Undo/Redo, panel recovery and Unicode paths. See [docs/VALIDATION.md](docs/VALIDATION.md) for evidence and limits.
+**Validation status:** The original bridge passed automated, live AE and Codex-driven workflows. The editing/preview extension has additional automated and native AE 26.3x87 checks. See [docs/EDITING.md](docs/EDITING.md) for the new workflow and [docs/VALIDATION.md](docs/VALIDATION.md) for evidence and limits.
 
 ## Requirements and installation
 
@@ -34,6 +34,8 @@ node install-bridge.js --portable --bridge-dir "C:\Users\YourName\AE Bridge 日�
 ```
 
 Restart AE after a new dockable installation, then open **Window > mcp-bridge-auto.jsx**. If application-directory permissions prevent copying, use portable mode, or manually copy the built JSX and the configuration file into ScriptUI Panels using File Explorer. Elevation, if needed, should cover only this copy. Installer failure is reported as failure; it never launches an unwaited elevated shell.
+
+AE 26.3 also supports **File > Scripts > Install ScriptUI Panel**, which installs into the per-user preferences directory. Run this installer with `--panel-dir` pointing to that directory afterward so the adjacent configuration is installed too (on the verified Windows installation: `%APPDATA%\Adobe\After Effects\26.3\Scripts\ScriptUI Panels`). Stop polling before opening script file dialogs. On updates, close and reopen the panel from Window; restart the MCP client to load the matching server and tools.
 
 Manual configuration beside the installed JSX:
 
@@ -82,12 +84,20 @@ One MCP server and one active panel own each directory. A second server fails ex
 | `duplicate-layer`, `delete-layer` | Exact-ID edits; delete is marked destructive |
 | `execute-batch` | Up to 25 structured operations, individual results, explicit partial failure |
 | `get-request-result` | Read a retained result/started record after uncertainty; never retries |
+| `list-fonts`, `edit-text-layer` | Installed PostScript fonts and existing static Source Text/whole-layer typography |
+| `get-layer-properties`, `get-property-info` | Paginated property-group browsing and numeric/color values, keys and easing |
+| `set-property-value`, `set-property-expression` | Guarded numeric/vector/RGBA edits and expressions, including effects and shape parameters |
+| `set-property-keyframes`, `set-keyframe-interpolation`, `delete-property-keyframes` | Multiple explicit keys, linear/hold/Bezier interpolation, temporal ease and exact-time deletion |
+| `set-layer-timing`, `set-layer-switches`, `reorder-layer` | Start/trim, visibility/solo/shy/motion blur/labels and relative ordering |
+| `create-null-layer`, `set-layer-parent`, `precompose-layers` | Controllers, parenting/unparenting, and precompose with all attributes |
+| `list-effects`, `add-effect`, `edit-effect`, `remove-effect` | Discover installed matchNames, add, rename, enable/disable and remove effects |
+| `capture-composition-frame` | Native PNG at an explicit time, delivered as MCP image content; standalone only |
 
 Inspect first and carry forward returned `projectSession`, `compositionId` and `layerId`. Targets are required. There is no fallback to the active composition, layer name or shifting index. Names and indices are descriptive only. Opening/replacing the project or restarting the panel invalidates its project-session token; inspect again. IDs should not be cached across project imports, reloads or panel restarts.
 
-Use pixels for positions and dimensions, seconds for times/durations, degrees for rotation, percentages for scale/opacity, and RGB values in **0–1**. For property edits and keyframes, match the inspected property's `valueDimensions` and `value` array length. AE can expose three-component Position/Scale values even on a 2D layer; preserve its third component. Creation tools accept XY placement as specified in their schemas. There is no scalar expansion. Separated position dimensions are deliberately unsupported. Static property edits reject existing keyframes or enabled expressions. Locked layers fail without being unlocked. Keyframe calls insert only the specified key; no hidden initial keyframe is created.
+Use pixels for positions and dimensions, seconds for times/durations, degrees for rotation, percentages for scale/opacity, and RGB/RGBA values in **0–1**. Match inspected `valueDimensions`; AE can expose three-component Position/Scale even on a 2D layer. Match `temporalEaseDimensions` separately: spatial Position uses one ease component. Named-transform shortcuts reject separated position; property browsing can target individual numeric followers. Static edits reject keyed/expressed properties. Locked layers fail without being unlocked. Keyframe tools insert only explicit keys.
 
-Shapes are rectangles/ellipses. Effect support starts with Fill. Expressions are evaluated by AE's property-expression engine; this is distinct from executing arbitrary JSX. Syntax/runtime errors are surfaced and may leave an undoable partial edit. The generic `run-script`, effect templates, test effects, masks, cameras and other incomplete legacy operations are no longer advertised. The legacy source remains available in Git at the baseline commit.
+Shape creation supports rectangles/ellipses; property paths expose their numeric size, color and other parameters. `add-effect` accepts installed effect matchNames; supported numeric/vector/color parameters can be inspected and edited. Complex custom values, shape-path vertices, text animators and layer/mask-index controls are not writable through the generic numeric tools. Expressions run in AE's expression engine, not as unrestricted JSX. Syntax/runtime errors may leave an undoable partial edit. No generic `run-script` is advertised.
 
 ## Recovery and batches
 
@@ -122,6 +132,8 @@ npm audit
 # With a new EMPTY disposable project and the panel open; close Codex's AE MCP first:
 $env:AE_MCP_BRIDGE_DIR = 'C:\Users\YourName\.after-effects-mcp\bridge'
 npm run acceptance
+# Additional editing/preview fixture (creates uniquely named comps; leaves existing comps alone):
+node scripts/acceptance-editing.mjs --create-disposable-comps
 ```
 
 The automated real-AE script refuses a nonempty initial project. It creates a 5-second 1920×1080 composition; adds solid/text/shape; animates position/opacity; sets an expression and Fill; inspects; duplicates/deletes; runs a batch; and checks an invalid target. It saves local JSON evidence. Then visually inspect the actual timeline, keyframes, effect and composition; test Undo; Stop/reopen the panel and inspect with fresh IDs. Repeat the workflow through Codex itself. See [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).

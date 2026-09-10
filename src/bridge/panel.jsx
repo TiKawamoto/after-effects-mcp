@@ -1,4 +1,5 @@
 // Startup, filesystem transport and panel lifecycle. Wrapped by the build in one closure.
+var activeRequestId = null;
 var panelId =
   "panel-" +
   String(new Date().getTime()) +
@@ -223,7 +224,9 @@ function handle(file, server) {
           "Ownership or server session changed before execution."
         );
       }
-      out = responseFor(r, "success", dispatch(r.operation, r.arguments));
+      activeRequestId = id;
+      try { out = responseFor(r, "success", dispatch(r.operation, r.arguments)); }
+      finally { activeRequestId = null; }
     }
   } catch (e) {
     // Persist under the safe filename even when untrusted envelope identifiers are malformed.

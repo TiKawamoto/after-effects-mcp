@@ -1,5 +1,21 @@
 # Validation record — 2026-09-09
 
+## Editing and previews 2.1
+
+Build, strict TypeScript, generated ES3 parsing and **30 automated tests pass**. New coverage includes guarded property paths, numeric bounds, keyframe preflight and easing dimensions, text/font validation, layer relationships, property browsing and bounded, correlated PNG delivery. Deferred PNG publication is tested through completion and timeout without recapture.
+
+The live SDK-over-STDIO acceptance workflow passed on **AE 26.3x87**, server/panel **2.1.0**, protocol **1**. It exercised all 20 added tools against disposable compositions: installed font/effect discovery; text content, size, tracking and left/center/right alignment; generic shape/effect values; keyframe insertion, deletion, linear/hold/Bezier interpolation, temporal ease and expressions; timing, switches, ordering, nulls, parenting and precomposition. Missing fonts, stale property paths, missing keys, parenting cycles and external-parent precomposition failed as expected. Existing composition summaries remained unchanged.
+
+Three native 640×360 PNGs arrived as MCP image content. Visual inspection verified the full white title and cyan accent at two times. The two-second frame before and after precomposition is byte-identical. A separate retained-result call returned the exact original image after the test client restarted, without another capture.
+
+Native testing exposed two issues fixed before completion: AE can finish writing `saveFrameToPng` output after the JSX call returns, so Node waits for a complete PNG; text alignment required explicit native-enum assignment branches and now has a checked postcondition. The live test asserts all three alignments and interpolation modes.
+
+Local evidence: `local-validation/editing-1788980227432/` contains calls, summary, previews and `preview-recovery.json`. New tools were verified with the real MCP SDK and native AE; the desktop's already-running MCP connection must reload to discover the 2.1 tools. Other AE versions and third-party effects have not been certified. See [EDITING.md](EDITING.md) for supported property types and limits.
+
+The verified fixture is saved separately as `local-validation/verified-editing-and-previews.aep`. Both the portable and per-user dockable panel installations were updated with checksum verification. The docked panel was reopened in its original location on the normal bridge directory. It correctly reports a version mismatch against the desktop's still-running 2.0 server until Codex reloads; no ownership locks or session records were bypassed.
+
+## Previous 2.0 milestone
+
 Baseline: 88d5fbf08b7ae9f015ee98e5f8c4904095cf8202. Branch: reliability/file-bridge-v1. See [BASELINE.md](BASELINE.md) and the measured [Codex call evidence](validation-evidence.json).
 
 ## Automated checks — passed

@@ -163,6 +163,15 @@ function layerInfo(l, detail) {
       enabled: l.enabled,
       inPoint: l.inPoint,
       outPoint: l.outPoint,
+      startTime: l.startTime,
+      stretch: l.stretch,
+      parentLayerId: l.parent ? l.parent.id : null,
+      solo: l.solo,
+      shy: l.shy,
+      motionBlur: l.motionBlur,
+      guideLayer: l.guideLayer,
+      adjustmentLayer: l.adjustmentLayer,
+      label: l.label,
       threeDLayer: l.threeDLayer
     },
     k,
@@ -209,12 +218,8 @@ function layerInfo(l, detail) {
   p = l.property("ADBE Text Properties");
   if (p) {
     p = p.property("ADBE Text Document").value;
-    result.text = {
-      text: p.text,
-      font: p.font,
-      fontSize: p.fontSize,
-      color: p.fillColor
-    };
+    result.text = textDetails(p);
+    result.text.color = result.text.fillColor;
   }
   return result;
 }
@@ -234,6 +239,7 @@ function listComps() {
 }
 function perform(operation, a) {
   var c, l, p, k, i, t, d, group, contents, shape, fill, original, info;
+  if (editingOperations[operation]) { return editingPerform(operation, a); }
   if (operation === "status") {
     return {
       connected: true,

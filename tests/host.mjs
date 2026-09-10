@@ -74,10 +74,10 @@ export function host(
     fs.mkdirSync(this.fsName, { recursive: true });
     return true;
   };
-  Folder.prototype.getFiles = function () {
+  Folder.prototype.getFiles = function (pattern = "*.json") {
     return fs
       .readdirSync(this.fsName)
-      .filter((x) => x.endsWith(".json"))
+      .filter((x) => x.endsWith(pattern.slice(1)))
       .map((x) => new File(path.join(this.fsName, x)));
   };
   const context = vm.createContext({
@@ -90,6 +90,7 @@ export function host(
   const source = [
     "src/bridge/json.jsx",
     "src/shared/validate.js",
+    "src/bridge/editing.jsx",
     "src/bridge/operations.jsx",
     "src/bridge/panel.jsx"
   ]

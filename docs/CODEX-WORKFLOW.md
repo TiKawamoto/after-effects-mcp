@@ -10,4 +10,4 @@
 
 For a disposable acceptance project, ask Codex to use its `after_effects` MCP tools to create a five-second 1920×1080 composition, add a background/text/shape, animate text Position and Opacity, set a shape rotation expression and Fill, inspect keys/effect/expression, duplicate and delete only the test copy, run a property-plus-inspection batch, and verify an invalid composition ID leaves a separate control composition unchanged. Verify Undo and panel close/reopen in AE. See [ACCEPTANCE.md](ACCEPTANCE.md) for the exact reference scene.
 
-The integration provides structured operations, not unrestricted JSX, rendering, media import or previews. Use only capabilities present in the discovered tool schemas.
+Version 2.1 also provides structured property/text/effect editing and single-frame PNG previews. Follow [EDITING.md](EDITING.md) for property paths and easing dimensions. Capture frames after changes and inspect the returned images. General rendering jobs, media import and unrestricted JSX remain outside the integration. Use only capabilities present in discovered schemas.

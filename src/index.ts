@@ -7,6 +7,7 @@ import {
 import { catalog, version, protocolVersion } from "./catalog.mjs";
 import { validate } from "./shared/validate.js";
 import { BridgeClient, BridgeError } from "./bridge-client.js";
+import { waitForPreview, prunePreviews } from "./preview.js";
 
 const bridge = new BridgeClient(
   process.env.AE_MCP_BRIDGE_DIR || "",
@@ -60,6 +61,8 @@ server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     } catch (e) {
       throw new BridgeError("INVALID_ARGUMENTS", String(e));
     }
+    if (params.name === "capture-composition-frame")
+      prunePreviews(bridge.directory);
     const response =
       params.name === "get-request-result"
         ? bridge.result(String(params.arguments?.requestId))
@@ -71,8 +74,39 @@ server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
         protocolVersion,
         bridgeDirectory: bridge.directory
       };
+    const content: Array<
+      | { type: "text"; text: string }
+      | { type: "image"; mimeType: string; data: string }
+    > = [{ type: "text", text: JSON.stringify(response) }];
+    if (
+      response.status === "success" &&
+      response.operation === "captureCompositionFrame"
+    ) {
+      try {
+        content.push(await waitForPreview(bridge.directory, response));
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                ...response,
+                status: "error",
+                data: response.data,
+                error: {
+                  code: "PREVIEW_UNAVAILABLE",
+                  message: String(e),
+                  mayHaveChanged: false
+                }
+              })
+            }
+          ],
+          isError: true
+        };
+      }
+    }
     return {
-      content: [{ type: "text" as const, text: JSON.stringify(response) }],
+      content,
       isError:
         response.status === "error" || response.status === "outcome_unknown"
     };
