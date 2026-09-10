@@ -15,7 +15,7 @@ for (const file of fs.readdirSync(output)) {
     fs.unlinkSync(path.join(output, file));
 }
 await build({
-  entryPoints: ["src/index.ts", "src/bridge-client.ts", "src/preview.ts"],
+  entryPoints: ["src/index.ts", "src/bridge-client.ts", "src/preview.ts", "src/owner-recovery.ts"],
   bundle: true,
   platform: "node",
   format: "esm",

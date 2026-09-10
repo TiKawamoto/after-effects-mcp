@@ -1,5 +1,11 @@
 # Validation record — 2026-09-09
 
+## Abandoned ownership recovery — 2026-09-10
+
+Reproduced a waiting panel with only one AfterFX.exe process running. `owner.json` still referenced the prior day's panel, whose last heartbeat preceded the current AE process's Windows creation time. The new recovery command verified that evidence, published a release record, and the existing server elected today's waiting panel. Native UI inspection confirmed **Connected**, with the current empty project unchanged. No process was terminated and no request/result/started journal was deleted or replayed.
+
+Build, strict TypeScript, ES3 parsing and **34 tests pass**. Recovery tests cover multiple processes, stale/malformed evidence, unavailable process inspection, resumed heartbeats, changed owners, preserved journals, normal server election and retention of owner evidence. Both installed panel copies were checksum-verified. The running client was recovered with the explicit helper; automatic verification activates when that client next reloads the updated server.
+
 ## Editing and previews 2.1
 
 Build, strict TypeScript, generated ES3 parsing and **30 automated tests pass**. New coverage includes guarded property paths, numeric bounds, keyframe preflight and easing dimensions, text/font validation, layer relationships, property browsing and bounded, correlated PNG delivery. Deferred PNG publication is tested through completion and timeout without recapture.

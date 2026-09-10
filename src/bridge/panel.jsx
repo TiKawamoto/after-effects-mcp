@@ -260,9 +260,13 @@ function tick() {
     ) {
       log("Version mismatch. Rebuild/reinstall both server and panel.");
     } else if (!owner || owner.panelId !== panelId) {
-      log(
-        "Waiting for exclusive ownership. Stop the other panel; do not run two AE instances."
-      );
+      var ownerHello = owner ? optionalRead(fileAt("panels", owner.panelId + ".hello.json")) : null;
+      if (!owner) { log("Waiting for the MCP server to assign this panel."); }
+      else if (ownerHello && Math.abs(now - ownerHello.updatedAt) < 5000) {
+        log("Another MCP panel owns this directory. Stop that panel to connect.");
+      } else {
+        log("Previous panel is unresponsive, possibly after an AE restart. See README recovery steps if this persists.");
+      }
     } else {
       var files = new Folder(root.fsName + "/requests").getFiles("*.json"),
         candidates = [],

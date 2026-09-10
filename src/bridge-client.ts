@@ -3,6 +3,7 @@ import path from "node:path";
 import net from "node:net";
 import { createHash, randomUUID } from "node:crypto";
 import { protocolVersion, version } from "./catalog.mjs";
+import { recoverAbandonedOwner } from "./owner-recovery.js";
 
 export const MAX_BYTES = 1024 * 1024;
 export const MAX_QUEUE = 32;
@@ -81,6 +82,8 @@ export class BridgeClient {
   private timer?: NodeJS.Timeout;
   private pending = 0;
   private closed = false;
+  private recoveryRunning = false;
+  private nextRecoveryAt = 0;
   constructor(
     directory: string,
     public timeoutMs = 30000
@@ -156,6 +159,14 @@ export class BridgeClient {
       fs.unlinkSync(this.file("", "owner.json"));
       owner = undefined;
     }
+    if (owner && process.platform === "win32" && !this.recoveryRunning && Date.now() >= this.nextRecoveryAt) {
+      this.nextRecoveryAt = Date.now() + 30000;
+      this.recoveryRunning = true;
+      void recoverAbandonedOwner(this.directory)
+        .then(result => { if (result.recovered && "panelId" in result) console.error("Recovered abandoned AE panel:", result.panelId); })
+        .catch(error => console.error("AE owner verification:", String(error)))
+        .finally(() => { this.recoveryRunning = false; });
+    }
     if (!owner) {
       const candidates = fs
         .readdirSync(this.file("panels", ""))
@@ -180,6 +191,7 @@ export class BridgeClient {
   cleanup() {
     // Never prune records inside the five minute replay horizon.
     for (const folder of ["requests", "results", "started", "panels"]) {
+      const owner = folder === "panels" ? maybe(this.file("", "owner.json")) : undefined;
       const files = fs
         .readdirSync(this.file(folder, ""))
         .filter((f) => /\.(json|tmp)$/.test(f))
@@ -191,6 +203,8 @@ export class BridgeClient {
       for (let i = 0; i < files.length; i++) {
         const f = files[i],
           age = Date.now() - f.mtime;
+        // Retain the current owner's last heartbeat as process-recovery evidence.
+        if (owner && f.name === `${owner.panelId}.hello.json`) continue;
         if (
           age > 86400000 ||
           (i >= 2048 && age > 300000) ||
@@ -216,7 +230,7 @@ export class BridgeClient {
     )
       throw new BridgeError(
         "PANEL_OFFLINE",
-        `AE panel is closed, paused, busy, or disconnected. Open mcp-bridge-auto.jsx and Start. Check script file permissions and directory: ${this.directory}. An abandoned owner requires closing all AE processes before npm run bridge-reset.`
+        `AE panel is closed, paused, busy, or disconnected. Open mcp-bridge-auto.jsx and Start. Check script file permissions and directory: ${this.directory}. On Windows, abandoned ownership is checked automatically; npm run bridge-recover can check immediately. If process termination cannot be proven, close all AE processes before npm run bridge-reset.`
       );
     if (h.protocolVersion !== protocolVersion || h.bridgeVersion !== version)
       throw new BridgeError(

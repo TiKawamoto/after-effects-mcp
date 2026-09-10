@@ -11,6 +11,7 @@
     "start": "node build/index.js",
     "install-bridge": "node install-bridge.js",
     "bridge-reset": "node scripts/reset-bridge.mjs",
+    "bridge-recover": "node scripts/recover-owner.mjs",
     "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {
